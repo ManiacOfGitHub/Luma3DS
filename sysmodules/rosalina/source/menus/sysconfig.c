@@ -144,7 +144,7 @@ void SysConfigMenu_UpdateStatus(bool control)
         item->method = &SysConfigMenu_DisableForcedWifiConnection;
     }
 }
-void SysConfigMenu_ThreadPressB(Handle event) 
+void SysConfigMenu_ThreadPressB(void *) 
 {
     event = svcCreateEvent(&event, RESET_ONESHOT);
     do {
@@ -185,12 +185,12 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
     Handle connectEvent = 0;
     svcCreateEvent(&connectEvent, RESET_ONESHOT);
     Handle bPressEvent = 0;
-    threadCreate(SysConfigMenu_ThreadPressB, bPressEvent, 4 * 1024, 0x30, -2, true);
+    threadCreate(SysConfigMenu_ThreadPressB, &bPressEvent, 4 * 1024, 0x30, -2, true);
     bool forcedConnection = false;
     int outputEvent;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
-        if(R_SUCCEEDED(svcWaitSynchronizationN(&outputEvent, [connectEvent,bPressEvent], 2, false, -1)) && outputEvent === 0 && R_SUCCEEDED(ACU_GetSSID(ssid)))
+        if(R_SUCCEEDED(svcWaitSynchronizationN(&outputEvent, {connectEvent,bPressEvent}, 2, false, -1)) && outputEvent == 0 && R_SUCCEEDED(ACU_GetSSID(ssid)))
             forcedConnection = true;
             
     }
@@ -207,8 +207,8 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
         acExit();
 
     char infoString[80] = {0};
-    u32 infoStringColor = outputEvent === 1 ? COLOR_WHITE : (forcedConnection ? COLOR_GREEN : COLOR_RED);
-    if(outputEvent === 1)
+    u32 infoStringColor = outputEvent == 1 ? COLOR_WHITE : (forcedConnection ? COLOR_GREEN : COLOR_RED);
+    if(outputEvent == 1)
         sprintf(infoString, "Cancelled Connection.");
     else if(forcedConnection)
         sprintf(infoString, "Succesfully forced a connection to: %s", ssid);
