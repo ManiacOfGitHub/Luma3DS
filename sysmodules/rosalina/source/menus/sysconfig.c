@@ -144,7 +144,7 @@ void SysConfigMenu_UpdateStatus(bool control)
         item->method = &SysConfigMenu_DisableForcedWifiConnection;
     }
 }
-void SysConfigMenu_ThreadPressB(void *) 
+void SysConfigMenu_ThreadPressB(void * event) 
 {
     event = svcCreateEvent(&event, RESET_ONESHOT);
     do {
@@ -190,7 +190,8 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
     int outputEvent;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
-        if(R_SUCCEEDED(svcWaitSynchronizationN(&outputEvent, {connectEvent,bPressEvent}, 2, false, -1)) && outputEvent == 0 && R_SUCCEEDED(ACU_GetSSID(ssid)))
+        Handle events[2] = {connectEvent, bPressEvent};
+        if(R_SUCCEEDED(svcWaitSynchronizationN(&outputEvent, events, 2, false, -1)) && outputEvent == 0 && R_SUCCEEDED(ACU_GetSSID(ssid)))
             forcedConnection = true;
             
     }
