@@ -144,9 +144,32 @@ void SysConfigMenu_UpdateStatus(bool control)
         item->method = &SysConfigMenu_DisableForcedWifiConnection;
     }
 }
-
+void SysConfigMenu_ThreadPressB(Handle event) 
+{
+    event = svcCreateEvent(&event, RESET_ONESHOT);
+    do {
+        u32 pressed = waitInputWithTimeout(1000);
+        if(pressed & KEY_B) {
+            svcSignalEvent(event);
+            break;
+        }
+    }
+    while(!menuShouldExit && event != 0);
+}
 static bool SysConfigMenu_ForceWifiConnection(int slot)
 {
+    Draw_Lock();
+    Draw_ClearFramebuffer();
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+    char loadingString[80] = {0};
+    sprintf(loadingString, "Attempting to connect to slot %d...", slot + 1);
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "System configuration menu");
+    Draw_DrawString(10, 30, COLOR_WHITE, loadingString);
+    Draw_DrawString(10, 40, COLOR_WHITE, "Press B to stop.");
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
     char ssid[0x20 + 1] = {0};
     isConnectionForced = false;
 
@@ -161,14 +184,19 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
 
     Handle connectEvent = 0;
     svcCreateEvent(&connectEvent, RESET_ONESHOT);
-
+    Handle bPressEvent = 0;
+    threadCreate(SysConfigMenu_ThreadPressB, bPressEvent, 4 * 1024, 0x30, -2, true);
     bool forcedConnection = false;
+    int outputEvent;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
-        if(R_SUCCEEDED(svcWaitSynchronization(connectEvent, -1)) && R_SUCCEEDED(ACU_GetSSID(ssid)))
+        if(R_SUCCEEDED(svcWaitSynchronizationN(&outputEvent, [connectEvent,bPressEvent], 2, false, -1)) && outputEvent === 0 && R_SUCCEEDED(ACU_GetSSID(ssid)))
             forcedConnection = true;
+            
     }
     svcCloseHandle(connectEvent);
+    svcCloseHandle(bPressEvent);
+    bPressEvent = 0;
 
     if(forcedConnection)
     {
@@ -179,11 +207,13 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
         acExit();
 
     char infoString[80] = {0};
-    u32 infoStringColor = forcedConnection ? COLOR_GREEN : COLOR_RED;
-    if(forcedConnection)
+    u32 infoStringColor = outputEvent === 1 ? COLOR_WHITE : (forcedConnection ? COLOR_GREEN : COLOR_RED);
+    if(outputEvent === 1)
+        sprintf(infoString, "Cancelled Connection.");
+    else if(forcedConnection)
         sprintf(infoString, "Succesfully forced a connection to: %s", ssid);
     else
-       sprintf(infoString, "Failed to connect to slot %d", slot + 1);
+        sprintf(infoString, "Failed to connect to slot %d", slot + 1);
 
     Draw_Lock();
     Draw_ClearFramebuffer();
