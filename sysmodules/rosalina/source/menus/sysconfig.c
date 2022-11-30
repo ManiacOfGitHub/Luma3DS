@@ -146,7 +146,7 @@ void SysConfigMenu_UpdateStatus(bool control)
 }
 void SysConfigMenu_ThreadPressB(void * event) 
 {
-    event = svcCreateEvent(&event, RESET_ONESHOT);
+    event = svcCreateEvent(*event, RESET_ONESHOT);
     do {
         u32 pressed = waitInputWithTimeout(1000);
         if(pressed & KEY_B) {
