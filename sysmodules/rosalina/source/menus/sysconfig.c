@@ -45,7 +45,7 @@ Menu sysconfigMenu = {
 };
 
 bool isConnectionForced = false;
-
+Handle bPressEvent = 0;
 void SysConfigMenu_ToggleLEDs(void)
 {
     Draw_Lock();
@@ -144,17 +144,16 @@ void SysConfigMenu_UpdateStatus(bool control)
         item->method = &SysConfigMenu_DisableForcedWifiConnection;
     }
 }
-void SysConfigMenu_ThreadPressB(void * event) 
+void SysConfigMenu_ThreadPressB(void *) 
 {
-    event = svcCreateEvent(event, RESET_ONESHOT);
     do {
         u32 pressed = waitInputWithTimeout(1000);
         if(pressed & KEY_B) {
-            svcSignalEvent(event);
+            svcSignalEvent(bPressEvent);
             break;
         }
     }
-    while(!menuShouldExit && event != 0);
+    while(!menuShouldExit && bPressEvent != 0);
 }
 static bool SysConfigMenu_ForceWifiConnection(int slot)
 {
@@ -184,8 +183,8 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
 
     Handle connectEvent = 0;
     svcCreateEvent(&connectEvent, RESET_ONESHOT);
-    Handle bPressEvent = 0;
-    threadCreate(SysConfigMenu_ThreadPressB, &bPressEvent, 4 * 1024, 0x30, -2, true);
+    svcCreateEvent(&bPressEvent, RESET_ONESHOT);
+    threadCreate(SysConfigMenu_ThreadPressB, 0, 4 * 1024, 0x30, -2, true);
     bool forcedConnection = false;
     int outputEvent;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
