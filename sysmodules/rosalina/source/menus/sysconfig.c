@@ -186,7 +186,7 @@ static bool SysConfigMenu_ForceWifiConnection(int slot)
     svcCreateEvent(&bPressEvent, RESET_ONESHOT);
     threadCreate(SysConfigMenu_ThreadPressB, 0, 4 * 1024, 0x30, -2, true);
     bool forcedConnection = false;
-    int outputEvent;
+    s32 outputEvent = 0;
     if(R_SUCCEEDED(ACU_ConnectAsync(&config, connectEvent)))
     {
         Handle events[2] = {connectEvent, bPressEvent};
